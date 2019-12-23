@@ -3,6 +3,7 @@
 #include "clock.h"
 #include "gpio.h"
 #include "timer.h"
+#include "i2c.h"
 
 const unsigned long delays[4] = { 500000, 1000000, 1500000, 3000000 };
 const int delayLength = 4;
@@ -11,19 +12,36 @@ uint16_t delayIndex = 0;
 void initGPIO(void);
 void initTimers(void);
 
+uint8_t transmitData[40] = {0x52, 0x6f, 0x62, 0x69, 0x6e, 0x41, 0x42, 0x43};
+
 int main(void)
 {
     WDT_A_hold(WDT_A_BASE);
 
     initGPIO();
-    initClocks();
+    initClocks(1);
     printClockSpeeds();
-    initTimers();
 
-    enableGPIOInterrupts();
+    //initTimers();
+    //enableGPIOInterrupts();
 
-    //__enable_interrupt();
-    __bis_SR_register(LPM0_bits + GIE);
+    bool isMaster = true;
+    initI2c(isMaster, 0x48);
+    if(!isMaster)
+    {
+        receiveValues(8);
+    }
+
+    while (1)
+    {
+        if(isMaster)
+        {
+            __delay_cycles(50);
+            transmitValues(transmitData, 8);
+        }
+        __bis_SR_register(LPM0_bits + GIE);
+        __no_operation();
+    }
 }
 
 void initGPIO(void)
@@ -41,6 +59,10 @@ void initTimers(void)
     addCompare(2, 0.9f);
 
 }
+
+
+
+
 
 #pragma vector=TIMER0_A1_VECTOR
 interrupt void timerTA0_1(void)
@@ -66,6 +88,7 @@ interrupt void timerTA0_1(void)
     default: _never_executed();
     }
 }
+
 #pragma vector=TIMER0_A0_VECTOR
 interrupt void timerTA0_0(void)
 {

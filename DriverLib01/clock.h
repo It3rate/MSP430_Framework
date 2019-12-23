@@ -9,7 +9,7 @@ uint32_t aClockSpeed;
 
 uint16_t dividerForOneSecond;
 
-void initClocks(void);
+void initClocks(uint8_t mclkMHz);
 
 void setMClock_20MHz(void);
 void setMClock_12MHz(void);

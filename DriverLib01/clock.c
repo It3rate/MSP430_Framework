@@ -10,10 +10,27 @@
 //#define MCLK_FREQ_KHZ (MCLK_FREQ/1000)
 //#define FLL_RATIO MCLK_FREQ/(XT2_FREQ/4)
 
-void initClocks(void)
+void initClocks(uint8_t mclkMHz)
 {
-    setMClock_1MHz();
-    UCS_initClockSignal(UCS_SMCLK, UCS_DCOCLK_SELECT, UCS_CLOCK_DIVIDER_32);
+    switch(mclkMHz)
+    {
+    case 1:
+        setMClock_1MHz();
+        break;
+    case 8:
+        setMClock_8MHz();
+        break;
+    case 12:
+        setMClock_12MHz();
+        break;
+    case 20:
+        setMClock_20MHz();
+        break;
+    default:
+        __never_executed();
+        break;
+    }
+    //UCS_initClockSignal(UCS_SMCLK, UCS_DCOCLK_SELECT, UCS_CLOCK_DIVIDER_32);
     UCS_initClockSignal(UCS_ACLK, UCS_XT1CLK_SELECT, UCS_CLOCK_DIVIDER_1);
     mClockSpeed = UCS_getMCLK();
     smClockSpeed = UCS_getSMCLK();
