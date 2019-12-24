@@ -36,8 +36,9 @@ int main(void)
     {
         if(isMaster)
         {
-            __delay_cycles(50);
-            transmitValues(transmitData, 8);
+            __delay_cycles(1000);
+            //transmitValues(transmitData, 8);
+            receiveValues(4);
         }
         __bis_SR_register(LPM0_bits + GIE);
         __no_operation();
@@ -57,7 +58,6 @@ void initTimers(void)
     setTargetTimerAndMode(TIMER_A0_BASE, TIMER_A_UP_MODE, 0.5f);
     addCompare(1, 0.6f);
     addCompare(2, 0.9f);
-
 }
 
 
