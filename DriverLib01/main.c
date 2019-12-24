@@ -25,20 +25,22 @@ int main(void)
     //initTimers();
     //enableGPIOInterrupts();
 
-    bool isMaster = true;
+//    bool isMaster = true;
+//    bool isTX = false;
+    bool isMaster = false;
+    bool isTX = false;
     initI2c(isMaster, 0x48);
-    if(!isMaster)
-    {
-        receiveValues(8);
-    }
 
     while (1)
     {
-        if(isMaster)
+        __delay_cycles(1000);
+        if(isTX)
         {
-            __delay_cycles(1000);
-            //transmitValues(transmitData, 8);
-            receiveValues(4);
+            transmitValues(transmitData, 8);
+        }
+        else
+        {
+            receiveValues(8);
         }
         __bis_SR_register(LPM0_bits + GIE);
         __no_operation();
