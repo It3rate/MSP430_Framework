@@ -25,9 +25,7 @@ int main(void)
     //initTimers();
     //enableGPIOInterrupts();
 
-//    bool isMaster = true;
-//    bool isTX = false;
-    bool isMaster = false;
+    bool isMaster = true;
     bool isTX = false;
     initI2c(isMaster, 0x48);
 

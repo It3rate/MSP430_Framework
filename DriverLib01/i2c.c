@@ -112,104 +112,95 @@ void transmitValues(uint8_t data[32], uint8_t transmitLength)
 uint32_t transferCounter = 0;
 
 #pragma vector=USCI_B0_VECTOR
-__interrupt void usci_b0_isr (void)
+__interrupt void usci_b0_isr(void)
 {
     transferCounter++;
-    if(transferCounter > 0x0F00)
+    if (transferCounter > 0x0F00)
     {
         transferCounter = 0;
         GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
     }
 
-    uint8_t iv = (uint8_t)UCB0IV;
-    switch(__even_in_range(iv, 12)) {
-        case USCI_I2C_UCTXIFG:
+    uint8_t iv = (uint8_t) UCB0IV;
+    if (_isMaster)
+    {
+        switch (__even_in_range(iv, 12))
         {
-            if(_isMaster) // Master TX
+        case USCI_NONE: break;
+        case USCI_I2C_UCALIFG: break;
+        case USCI_I2C_UCSTTIFG: break;
+        case USCI_I2C_UCNACKIFG: break; // NACK
+        case USCI_I2C_UCTXIFG: // Master Transmit
+            if (i2cCounter)
             {
                 i2cCounter--;
-                if (i2cCounter > 0)
+                if (i2cCounter)
                 {
                     USCI_B_I2C_masterSendMultiByteNext(USCI_B0_BASE, i2cData[i2cDataLen - i2cCounter]);
                 }
-                else
+                else // end transmission
                 {
                     USCI_B_I2C_masterSendMultiByteStop(USCI_B0_BASE);
                     USCI_B_I2C_clearInterrupt(USCI_B0_BASE, USCI_B_I2C_TRANSMIT_INTERRUPT);
-                    GPIO_toggleOutputOnPin(GPIO_PORT_P4, GPIO_PIN7);
                     __bic_SR_register_on_exit(LPM0_bits);
                 }
             }
-            else // Slave TX
+            break;
+        case USCI_I2C_UCRXIFG:  // Master Receive
+            if (i2cCounter)
             {
-                if(i2cCounter)
+                i2cCounter--;
+                if (i2cCounter > 1)
                 {
-                    USCI_B_I2C_slavePutData(USCI_B0_BASE, *ptrI2cData++);
-                    i2cCounter--;
+                    *ptrI2cData++ = USCI_B_I2C_masterReceiveMultiByteNext(USCI_B0_BASE);
                 }
-                else
-                {
-                    USCI_B_I2C_slavePutData(USCI_B0_BASE, *ptrI2cData);
-                }
-//                else
-//                {
-//                    ptrI2cData = i2cData;
-//                    i2cCounter = i2cDataLen;
-//                }
-            }
-        }
-        break;
-
-        case USCI_I2C_UCRXIFG:
-        {
-            i2cCounter--;
-            if(_isMaster) // Master RX
-            {
-                if (i2cCounter == 1)
+                else if (i2cCounter == 1) // ask for last data element with a stop
                 {
                     *ptrI2cData++ = USCI_B_I2C_masterReceiveMultiByteFinish(USCI_B0_BASE);
                 }
-                else
+                else // read last byte and end receive
                 {
-                    uint8_t byte = USCI_B_I2C_masterReceiveMultiByteNext(USCI_B0_BASE);
-                    *ptrI2cData++ = byte;
-                    if (i2cCounter == 0) {
-                        __bic_SR_register_on_exit(LPM0_bits);
-                    }
+                    *ptrI2cData++ = USCI_B_I2C_masterReceiveMultiByteNext(USCI_B0_BASE);
+                    __bic_SR_register_on_exit(LPM0_bits);
                 }
             }
-            else // Slave RX
-            {
-                uint8_t data = USCI_B_I2C_slaveGetData(USCI_B0_BASE);
-                *ptrI2cData++ = data;
-                if(i2cCounter == 0)
-                {
-                    i2cCounter = i2cDataLen;
-                    ptrI2cData = i2cData;
-                }
-            }
-        }
-        break;
+            break;
 
-        case USCI_I2C_UCNACKIFG:
-        {
-            if(_isMaster) // Master NACK
-            {
-            }
-            else
-            {
-                __bic_SR_register_on_exit(LPM0_bits);
-            }
+        case USCI_I2C_UCSTPIFG: // Master Stop
+            __bic_SR_register_on_exit(LPM0_bits);
+            break;
         }
-        break;
-
-        case USCI_I2C_UCSTPIFG: // Stop
-        {
-            GPIO_toggleOutputOnPin(GPIO_PORT_P4, GPIO_PIN7);
-            //__bic_SR_register_on_exit(LPM0_bits);
-        }
-        break;
     }
+    else // Slave
+    {
+        switch (__even_in_range(iv, 12))
+        {
+        case USCI_NONE: break;
+        case USCI_I2C_UCALIFG: break;
+        case USCI_I2C_UCSTTIFG: break;
+        case USCI_I2C_UCTXIFG: // Slave Transmit
+            if (i2cCounter)
+            {
+                USCI_B_I2C_slavePutData(USCI_B0_BASE, *ptrI2cData++);
+                i2cCounter--;
+            }
+            break;
+        case USCI_I2C_UCRXIFG: // Slave Receive
+            if (i2cCounter)
+            {
+                *ptrI2cData++ = USCI_B_I2C_slaveGetData(USCI_B0_BASE);
+                i2cCounter--;
+            }
+            break;
+        case USCI_I2C_UCNACKIFG: // Slave NACK
+            __bic_SR_register_on_exit(LPM0_bits);
+            break;
+        case USCI_I2C_UCSTPIFG: // Slave Stop
+            __bic_SR_register_on_exit(LPM0_bits);
+            break;
+        }
+    }
+
 }
 
 
