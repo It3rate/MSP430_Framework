@@ -11,8 +11,14 @@ uint16_t delayIndex = 0;
 
 void initGPIO(void);
 void initTimers(void);
+void evaluateI2c(void);
 
-uint8_t transmitData[40] = {0x52, 0x6f, 0x62, 0x69, 0x6e, 0x41, 0x42, 0x43};
+#define DATA0LENGTH 9
+#define DATA1LENGTH 8
+uint8_t transmitData0[DATA0LENGTH] = {READ_FLAG, 0x52, 0x6f, 0x62, 0x69, 0x6e, 0x41, 0x42, 0x43};
+uint8_t transmitData1[DATA1LENGTH] = {WRITE_FLAG, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x70};
+uint8_t *transmitData;
+uint8_t dataLength = 0;
 
 int main(void)
 {
@@ -25,27 +31,48 @@ int main(void)
     //initTimers();
     //enableGPIOInterrupts();
 
-    bool isUSB1 = false;
-    bool USB1_isMaster = true;
-    bool USB1_isTransmit = false;
-    i2c_isMaster = isUSB1 ? USB1_isMaster : !USB1_isMaster;
-    i2c_isTransmitMode = isUSB1 ? USB1_isTransmit : !USB1_isTransmit;
-
+    i2c_isMaster = true;
     i2c_init(0x48);
 
+    i2cData[0] = WRITE_FLAG; // start with a write
     while (1)
     {
         __delay_cycles(1000);
+        evaluateI2c();
         if(i2c_isTransmitMode)
         {
-            i2c_transmitValues(transmitData, 8);
+            i2c_transmitValues(transmitData, dataLength);
         }
         else
         {
-            i2c_receiveValues(8);
+            i2c_receiveValues(dataLength);
         }
         __bis_SR_register(LPM0_bits + GIE);
-        __no_operation();
+    }
+}
+
+void evaluateI2c(void)
+{
+    if(i2cData[0] == READ_FLAG){ // asked to read a bit, so get it back
+        dataLength = DATA1LENGTH;
+        if(i2c_isMaster) {
+            i2c_isTransmitMode = false;
+        }
+        else {
+            transmitData = transmitData1;
+            i2c_isTransmitMode = true;
+        }
+    }
+    else { // default master writes
+        if(i2c_isMaster) {
+            transmitData = transmitData0;
+            dataLength = DATA0LENGTH;
+            i2c_isTransmitMode = true;
+        }
+        else {
+            dataLength = I2C_BUFFER_LENGTH;
+            i2c_isTransmitMode = false;
+        }
     }
 }
 

@@ -2,7 +2,6 @@
 
 uint16_t _slaveAddress;
 
-uint8_t i2cData[32];
 uint8_t * ptrI2cData;
 uint8_t i2cDataLen = 0;
 uint8_t i2cCounter = 0;

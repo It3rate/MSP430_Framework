@@ -3,8 +3,13 @@
 
 #include "driverlib.h"
 
+#define WRITE_FLAG 0
+#define READ_FLAG 1
+#define I2C_BUFFER_LENGTH 32
+
 bool i2c_isMaster;
 bool i2c_isTransmitMode;
+uint8_t i2cData[I2C_BUFFER_LENGTH];
 
 void i2c_init(uint16_t slaveAddress);
 void i2c_updateState();
