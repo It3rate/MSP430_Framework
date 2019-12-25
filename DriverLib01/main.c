@@ -25,20 +25,24 @@ int main(void)
     //initTimers();
     //enableGPIOInterrupts();
 
-    bool isMaster = true;
-    bool isTX = false;
-    initI2c(isMaster, 0x48);
+    bool isUSB1 = false;
+    bool USB1_isMaster = true;
+    bool USB1_isTransmit = false;
+    i2c_isMaster = isUSB1 ? USB1_isMaster : !USB1_isMaster;
+    i2c_isTransmitMode = isUSB1 ? USB1_isTransmit : !USB1_isTransmit;
+
+    i2c_init(0x48);
 
     while (1)
     {
         __delay_cycles(1000);
-        if(isTX)
+        if(i2c_isTransmitMode)
         {
-            transmitValues(transmitData, 8);
+            i2c_transmitValues(transmitData, 8);
         }
         else
         {
-            receiveValues(8);
+            i2c_receiveValues(8);
         }
         __bis_SR_register(LPM0_bits + GIE);
         __no_operation();
