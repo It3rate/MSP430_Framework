@@ -31,7 +31,7 @@ int main(void)
     //initTimers();
     //enableGPIOInterrupts();
 
-    i2c_isMaster = true;
+    i2c_isMaster = false;
     i2c_init(0x48);
 
     i2cData[0] = WRITE_FLAG; // start with a write
@@ -54,12 +54,13 @@ int main(void)
 void evaluateI2c(void)
 {
     if(i2cData[0] == READ_FLAG){ // asked to read a bit, so get it back
-        dataLength = DATA1LENGTH;
         if(i2c_isMaster) {
+            dataLength = DATA1LENGTH;
             i2c_isTransmitMode = false;
         }
         else {
             transmitData = transmitData1;
+            dataLength = I2C_BUFFER_LENGTH; // slave shouldn't ever need to know datalen..? May be timing issue.
             i2c_isTransmitMode = true;
         }
     }
