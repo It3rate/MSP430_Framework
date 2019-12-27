@@ -4,6 +4,8 @@
 
 #include <msp430.h>
 
+uint16_t currentMode;
+
 void setTargetTimerAndMode(uint16_t timer, uint16_t timerMode, float seconds);
 
 void setTimerFrequency(uint16_t timer, unsigned int frequency);

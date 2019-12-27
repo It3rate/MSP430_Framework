@@ -6,10 +6,6 @@
 #include "timer.h"
 #include "i2c.h"
 
-const unsigned long delays[4] = { 500000, 1000000, 1500000, 3000000 };
-const int delayLength = 4;
-uint16_t delayIndex = 0;
-
 void initGPIO(void);
 void initTimers(void);
 void evaluateI2c(void);
@@ -29,16 +25,15 @@ int main(void)
     initClocks(1);
     printClockSpeeds();
 
-    //initTimers();
-    //enableGPIOInterrupts();
+    initTimers();
+    enableGPIOInterrupts();
 
     i2c_isMaster = true;
     i2c_init(0x48);
-
     i2cData[0] = WRITE_FLAG; // start with a write
+
     while (1)
     {
-        __delay_cycles(1000);
         evaluateI2c();
         if(i2c_isTransmitMode)
         {
@@ -50,10 +45,17 @@ int main(void)
         }
         __bis_SR_register(LPM0_bits + GIE);
 
-        if(i2c_isMaster && !i2c_isTransmitMode)
+        if(i2c_isTransmitMode)
         {
-            printf("data: %s\n", (i2cData+1));
+            printf("transmitted: %s\n", (i2cData+1));
         }
+        else
+        {
+            printf("received: %s\n", (i2cData+1));
+        }
+
+        Timer_A_enableInterrupt(TIMER_A0_BASE);
+        __bis_SR_register(LPM0_bits + GIE);
     }
 }
 
@@ -66,7 +68,7 @@ void evaluateI2c(void)
         }
         else {
             transmitData = transmitData1;
-            dataLength = I2C_BUFFER_LENGTH; // slave shouldn't ever need to know datalen..? May be timing issue.
+            dataLength = I2C_BUFFER_LENGTH;
             i2c_isTransmitMode = true;
         }
     }
@@ -92,57 +94,50 @@ void initGPIO(void)
 
 void initTimers(void)
 {
-    //setTargetTimerAndMode(TIMER_A0_BASE, TIMER_A_CONTINUOUS_MODE, 0.0f);
-    setTargetTimerAndMode(TIMER_A0_BASE, TIMER_A_UP_MODE, 0.5f);
+//    setTargetTimerAndMode(TIMER_A0_BASE, TIMER_A_CONTINUOUS_MODE, 0.0f);
+    setTargetTimerAndMode(TIMER_A0_BASE, TIMER_A_UP_MODE, 0.1f);
+    Timer_A_clearTimerInterrupt(TIMER_A0_BASE);
     addCompare(1, 0.6f);
     addCompare(2, 0.9f);
 }
 
-
-
-
-
 #pragma vector=TIMER0_A1_VECTOR
 interrupt void timerTA0_1(void)
 {
-    switch(__even_in_range(TA0IV, 14))
+    if(currentMode == TIMER_A_UP_MODE)
     {
-    case 0: break; // none
-    case 2: // CCR1 IFG
-    {
-        GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
-        GPIO_setOutputHighOnPin(GPIO_PORT_P4, GPIO_PIN7);
-    } break;
-    case 4:  // CCR2 IFG
-    {
-        GPIO_setOutputHighOnPin(GPIO_PORT_P1, GPIO_PIN0);
-        GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN7);
-    } break;
-    case 6: break; // CCR3 IFG
-    case 8: break; // CCR4 IFG
-    case 10: break; // CCR5 IFG
-    case 12: break; // CCR6 IFG
-    case 14: break; // CCR7 IFG
-    default: _never_executed();
+        switch(__even_in_range(TA0IV, 14))
+        {
+        case 0: break; // none
+        case 2: // CCR1 IFG
+            GPIO_toggleOutputOnPin(GPIO_PORT_P4, GPIO_PIN7);
+            Timer_A_clearTimerInterrupt(TIMER_A0_BASE);
+            __bic_SR_register_on_exit(LPM0_bits);
+        break;
+        case 4:  // CCR2 IFG
+        break;
+        case 6: break; // CCR3 IFG
+        case 8: break; // CCR4 IFG
+        case 10: break; // CCR5 IFG
+        case 12: break; // CCR6 IFG
+        case 14: break; // CCR7 IFG
+        default: _never_executed();
+        }
     }
 }
 
 #pragma vector=TIMER0_A0_VECTOR
 interrupt void timerTA0_0(void)
 {
-    GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
-    GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN7);
-    Timer_A_clearTimerInterrupt(TIMER_A0_BASE);
+    __no_operation();
 }
 
 #pragma vector=PORT1_VECTOR
 interrupt void gpioP1(void)
 {
-    delayIndex++;
-    if (delayIndex >= delayLength)
-    {
-        delayIndex = 0;
-    }
+    P1IFG &= ~BIT1;
+    GPIO_toggleOutputOnPin(GPIO_PORT_P4, GPIO_PIN7);
+    __bic_SR_register_on_exit(LPM0_bits);
 }
 
 

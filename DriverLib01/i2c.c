@@ -1,4 +1,5 @@
 #include "i2c.h"
+#include <stdio.h>
 
 uint16_t _slaveAddress;
 
@@ -119,8 +120,8 @@ __interrupt void usci_b0_isr(void)
         switch (__even_in_range(iv, 12))
         {
         case USCI_NONE: break;
-        case USCI_I2C_UCALIFG: break;
-        case USCI_I2C_UCSTTIFG: break;
+        case USCI_I2C_UCALIFG: break; // arbitration lost flag (for multiple masters)
+        case USCI_I2C_UCSTTIFG: break; // start
         case USCI_I2C_UCTXIFG: // ****** Master Transmit ******
             if (i2cCounter)
             {

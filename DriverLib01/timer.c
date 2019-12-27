@@ -1,8 +1,8 @@
 #include "driverlib.h"
+#include "timer.h"
 #include "clock.h"
 
 uint16_t currentTimer;
-uint16_t currentMode;
 uint16_t currentTimePeriod;
 
 void createTimerParam();
@@ -21,7 +21,7 @@ void initContinuousTimer(Timer_A_initContinuousModeParam *param)
         break;
     }
 }
-void initUpTimer(Timer_A_initContinuousModeParam *param)
+void initUpTimer(Timer_A_initUpDownModeParam *param)
 {
     switch(currentTimer)
     {
@@ -59,12 +59,12 @@ void setTargetTimerAndMode(uint16_t timer, uint16_t timerMode, float seconds)
         case TIMER_A_UP_MODE:
         {
             Timer_A_initUpDownModeParam param = {0};
-            param.clockSource = TIMER_A_CLOCKSOURCE_SMCLK;
+            param.clockSource = TIMER_A_CLOCKSOURCE_ACLK;
             param.clockSourceDivider = dividerForOneSecond;
             param.timerInterruptEnable_TAIE = TIMER_A_TAIE_INTERRUPT_ENABLE;
             param.captureCompareInterruptEnable_CCR0_CCIE = TIMER_A_CAPTURECOMPARE_INTERRUPT_ENABLE;
             param.timerClear = TIMER_A_DO_CLEAR;
-            currentTimePeriod = seconds * smClockSpeed;
+            currentTimePeriod = seconds * aClockSpeed;
             param.timerPeriod = currentTimePeriod;
             param.startTimer = false;
             initUpTimer(&param);
@@ -113,4 +113,7 @@ void addCompare(char registerIndex, float ratio)
     Timer_A_initCompareMode(currentTimer, &param);
     Timer_A_clearCaptureCompareInterrupt(currentTimer, reg);
 }
+
+
+
 
