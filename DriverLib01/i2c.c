@@ -140,18 +140,16 @@ __interrupt void usci_b0_isr(void)
         case USCI_I2C_UCRXIFG:  // ****** Master Receive ******
             if (i2cCounter)
             {
+                *ptrI2cData++ = USCI_B_I2C_masterReceiveMultiByteNext(USCI_B0_BASE);
+
                 i2cCounter--;
-                if (i2cCounter > 1)
+                if (i2cCounter == 1 || i2cDataLen == 1) // send stop if the second last element
                 {
-                    *ptrI2cData++ = USCI_B_I2C_masterReceiveMultiByteNext(USCI_B0_BASE);
+                    USCI_B_I2C_masterReceiveMultiByteStop(USCI_B0_BASE);
                 }
-                else if (i2cCounter == 1) // ask for last data element with a stop
+
+                if (i2cCounter == 0) // finish read
                 {
-                    *ptrI2cData++ = USCI_B_I2C_masterReceiveMultiByteFinish(USCI_B0_BASE);
-                }
-                else // read last byte and end receive
-                {
-                    *ptrI2cData++ = USCI_B_I2C_masterReceiveMultiByteNext(USCI_B0_BASE);
                     __bic_SR_register_on_exit(LPM0_bits);
                 }
             }

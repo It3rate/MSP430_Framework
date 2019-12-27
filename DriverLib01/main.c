@@ -1,4 +1,5 @@
 #include <msp430.h>
+#include <stdio.h>
 #include "driverlib.h"
 #include "clock.h"
 #include "gpio.h"
@@ -13,10 +14,10 @@ void initGPIO(void);
 void initTimers(void);
 void evaluateI2c(void);
 
-#define DATA0LENGTH 9
-#define DATA1LENGTH 8
-uint8_t transmitData0[DATA0LENGTH] = {READ_FLAG, 0x52, 0x6f, 0x62, 0x69, 0x6e, 0x41, 0x42, 0x43};
-uint8_t transmitData1[DATA1LENGTH] = {WRITE_FLAG, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x70};
+#define DATA0LENGTH 10
+#define DATA1LENGTH 9
+uint8_t transmitData0[DATA0LENGTH] = {READ_FLAG, 0x52, 0x6f, 0x62, 0x69, 0x6e, 0x41, 0x42, 0x43, 0x00};
+uint8_t transmitData1[DATA1LENGTH] = {WRITE_FLAG, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x00};
 uint8_t *transmitData;
 uint8_t dataLength = 0;
 
@@ -31,7 +32,7 @@ int main(void)
     //initTimers();
     //enableGPIOInterrupts();
 
-    i2c_isMaster = false;
+    i2c_isMaster = true;
     i2c_init(0x48);
 
     i2cData[0] = WRITE_FLAG; // start with a write
@@ -48,6 +49,11 @@ int main(void)
             i2c_receiveValues(dataLength);
         }
         __bis_SR_register(LPM0_bits + GIE);
+
+        if(i2c_isMaster && !i2c_isTransmitMode)
+        {
+            printf("data: %s\n", (i2cData+1));
+        }
     }
 }
 
