@@ -23,7 +23,7 @@ void i2c_initMaster(uint16_t slaveAddress)
     USCI_B_I2C_initMasterParam param = {0};
     param.selectClockSource = USCI_B_I2C_CLOCKSOURCE_SMCLK;
     param.i2cClk = UCS_getSMCLK();
-    param.dataRate = USCI_B_I2C_SET_DATA_RATE_100KBPS;
+    param.dataRate = USCI_B_I2C_SET_DATA_RATE_400KBPS;
     USCI_B_I2C_initMaster(USCI_B0_BASE, &param);
     USCI_B_I2C_setSlaveAddress(USCI_B0_BASE, _slaveAddress);
 }
@@ -37,12 +37,6 @@ void i2c_masterSetReadMode()
 }
 
 // ***** RECEIVE *****
-void i2c_masterReceiveByte()
-{
-    USCI_B_I2C_masterReceiveSingleStart(USCI_B0_BASE);
-    i2cDataIn[0] = USCI_B_I2C_masterReceiveSingle (USCI_B0_BASE);
-    i2cDataIn[1] = 0;
-}
 #define RECEIVE_INTERRUPTS (USCI_B_I2C_RECEIVE_INTERRUPT + USCI_B_I2C_START_INTERRUPT + USCI_B_I2C_STOP_INTERRUPT + USCI_B_I2C_NAK_INTERRUPT)
 void i2c_masterReceiveMultibyte(uint8_t receiveLength)
 {
@@ -59,19 +53,6 @@ void i2c_masterReceiveMultibyte(uint8_t receiveLength)
 
 // ***** TRANSMIT *****
 #define TRANSMIT_INTERRUPTS (USCI_B_I2C_TRANSMIT_INTERRUPT + USCI_B_I2C_START_INTERRUPT + USCI_B_I2C_STOP_INTERRUPT + USCI_B_I2C_NAK_INTERRUPT)
-
-void i2c_masterTransmitByte(uint8_t data)
-{
-    USCI_B_I2C_setMode(USCI_B0_BASE, USCI_B_I2C_TRANSMIT_MODE);
-    USCI_B_I2C_enable(USCI_B0_BASE);
-    USCI_B_I2C_clearInterrupt(USCI_B0_BASE,TRANSMIT_INTERRUPTS);
-    USCI_B_I2C_enableInterrupt(USCI_B0_BASE,TRANSMIT_INTERRUPTS);
-    USCI_B_I2C_masterSendSingleByte(USCI_B0_BASE, *ptrI2cData);
-    HWREG8(USCI_B0_BASE + OFS_UCBxCTL1) &= ~USCI_B_I2C_TRANSMIT_MODE;
-//    __delay_cycles(100);
-//    USCI_B_I2C_clearInterrupt(USCI_B0_BASE, USCI_B_I2C_TRANSMIT_INTERRUPT);
-//    USCI_B_I2C_clearInterrupt(USCI_B0_BASE, USCI_B_I2C_STOP_INTERRUPT);
-}
 
 void i2c_masterTransmitMultibyte(uint8_t data[32], uint8_t transmitLength)
 {

@@ -8,8 +8,6 @@
 
 void i2c_initMaster(uint16_t slaveAddress);
 
-void i2c_masterTransmitByte(uint8_t data);
-void i2c_masterReceiveByte();
 void i2c_masterTransmitMultibyte(uint8_t data[32], uint8_t transmitLength);
 void i2c_masterReceiveMultibyte(uint8_t receiveLength);
 
