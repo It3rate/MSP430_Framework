@@ -3,8 +3,6 @@
 
 void initMpu9250(void)
 {
-    i2c_isMaster = true;
-    i2c_init(0x68); // address 0x69 if pin AD0 is logic high
 }
 
 void start()

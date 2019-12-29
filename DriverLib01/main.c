@@ -5,17 +5,23 @@
 #include "gpio.h"
 #include "timer.h"
 #include "i2c.h"
+#include "i2cMaster.h"
+#include "i2cSlave.h"
 
 void initGPIO(void);
 void initTimers(void);
-void evaluateI2c(void);
 
-#define DATA0LENGTH 10
-#define DATA1LENGTH 9
-uint8_t transmitData0[DATA0LENGTH] = {READ_FLAG, 0x52, 0x6f, 0x62, 0x69, 0x6e, 0x41, 0x42, 0x43, 0x00};
-uint8_t transmitData1[DATA1LENGTH] = {WRITE_FLAG, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x00};
+#define DATA0LENGTH 9
+#define DATA1LENGTH 8
+//uint8_t transmitData0[DATA0LENGTH] = {0x52, 0x6f, 0x62, 0x69, 0x6e, 0x41, 0x42, 0x43, 0x5A};
+//uint8_t transmitData1[DATA1LENGTH] = {0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x59};
+uint8_t transmitData0[DATA0LENGTH] = {0x75, 0x6f, 0x62, 0x69, 0x6e, 0x41, 0x42, 0x43, 0x5A};
+uint8_t transmitData1[DATA1LENGTH] = {0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x59};
 uint8_t *transmitData;
 uint8_t dataLength = 0;
+uint8_t sendIndex = 0;
+
+bool i2c_isTransmitMode = true;
 
 int main(void)
 {
@@ -24,65 +30,56 @@ int main(void)
     initGPIO();
     initClocks(1);
     printClockSpeeds();
-
-    initTimers();
     enableGPIOInterrupts();
 
-    i2c_isMaster = true;
-    i2c_init(0x48);
-    i2cData[0] = WRITE_FLAG; // start with a write
+#ifdef I2C_IS_MASTER
+    initTimers();
+    //i2c_initMaster(0x48);
+    //i2c_initMaster(0x34);
+    i2c_initMaster(0x68);
 
     while (1)
     {
-        evaluateI2c();
-        if(i2c_isTransmitMode)
+        switch(sendIndex)
         {
-            i2c_transmitValues(transmitData, dataLength);
-        }
-        else
-        {
-            i2c_receiveValues(dataLength);
+        case 0:
+            //i2c_masterTransmitByte(transmitData0[0]);
+            i2c_masterTransmitMultibyte(&transmitData0[0], 1);
+            //printf("out: %s\n", i2cDataOut);
+            break;
+        case 1:
+            i2c_masterReceiveMultibyte(1);
+            //printf("in: %s\n", i2cDataIn);
+            break;
+//        case 2:
+//            //i2c_masterTransmitByte(transmitData1[0]);
+//            i2c_masterTransmitMultibyte(&transmitData1[2], 1);
+//            break;
+//        case 3:
+//            i2c_masterTransmitMultibyte(transmitData1, DATA1LENGTH);
+//            break;
         }
         __bis_SR_register(LPM0_bits + GIE);
 
-        if(i2c_isTransmitMode)
+        sendIndex++;
+        if(sendIndex > 1)
         {
-            printf("transmitted: %s\n", (i2cData+1));
-        }
-        else
-        {
-            printf("received: %s\n", (i2cData+1));
+            sendIndex = 0;
         }
 
-        Timer_A_enableInterrupt(TIMER_A0_BASE);
+        printf("out: %s     in: %s\n", i2cDataOut, i2cDataIn);
+        Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
         __bis_SR_register(LPM0_bits + GIE);
     }
-}
+#else
+    i2c_initSlave(0x48);
+    while(1)
+    {
+        __bis_SR_register(LPM0_bits + GIE);
+    }
+#endif
 
-void evaluateI2c(void)
-{
-    if(i2cData[0] == READ_FLAG){ // asked to read a bit, so get it back
-        if(i2c_isMaster) {
-            dataLength = DATA1LENGTH;
-            i2c_isTransmitMode = false;
-        }
-        else {
-            transmitData = transmitData1;
-            dataLength = I2C_BUFFER_LENGTH;
-            i2c_isTransmitMode = true;
-        }
-    }
-    else { // default master writes
-        if(i2c_isMaster) {
-            transmitData = transmitData0;
-            dataLength = DATA0LENGTH;
-            i2c_isTransmitMode = true;
-        }
-        else {
-            dataLength = I2C_BUFFER_LENGTH;
-            i2c_isTransmitMode = false;
-        }
-    }
+
 }
 
 void initGPIO(void)
@@ -96,7 +93,7 @@ void initTimers(void)
 {
 //    setTargetTimerAndMode(TIMER_A0_BASE, TIMER_A_CONTINUOUS_MODE, 0.0f);
     setTargetTimerAndMode(TIMER_A0_BASE, TIMER_A_UP_MODE, 0.1f);
-    Timer_A_clearTimerInterrupt(TIMER_A0_BASE);
+    Timer_A_stop(TIMER_A0_BASE);
     addCompare(1, 0.6f);
     addCompare(2, 0.9f);
 }
@@ -111,7 +108,7 @@ interrupt void timerTA0_1(void)
         case 0: break; // none
         case 2: // CCR1 IFG
             GPIO_toggleOutputOnPin(GPIO_PORT_P4, GPIO_PIN7);
-            Timer_A_clearTimerInterrupt(TIMER_A0_BASE);
+            Timer_A_stop(TIMER_A0_BASE);
             __bic_SR_register_on_exit(LPM0_bits);
         break;
         case 4:  // CCR2 IFG

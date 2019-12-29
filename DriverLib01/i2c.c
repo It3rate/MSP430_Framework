@@ -1,7 +1,6 @@
+/*
 #include "i2c.h"
 #include <stdio.h>
-
-uint16_t _slaveAddress;
 
 uint8_t * ptrI2cData;
 uint8_t i2cDataLen = 0;
@@ -22,7 +21,7 @@ void i2c_init(uint16_t slaveAddress)
         USCI_B_I2C_initMasterParam param = {0};
         param.selectClockSource = USCI_B_I2C_CLOCKSOURCE_SMCLK;
         param.i2cClk = UCS_getSMCLK();
-        param.dataRate = USCI_B_I2C_SET_DATA_RATE_400KBPS;
+        param.dataRate = USCI_B_I2C_SET_DATA_RATE_100KBPS;
         USCI_B_I2C_initMaster(USCI_B0_BASE, &param);
         USCI_B_I2C_setSlaveAddress(USCI_B0_BASE, _slaveAddress);
     }
@@ -41,10 +40,12 @@ void setReceiveMode()
     USCI_B_I2C_disable(USCI_B0_BASE);
     i2c_isTransmitMode = false;
     USCI_B_I2C_setMode(USCI_B0_BASE, USCI_B_I2C_RECEIVE_MODE);
-    USCI_B_I2C_clearInterrupt(USCI_B0_BASE, USCI_B_I2C_RECEIVE_INTERRUPT + USCI_B_I2C_STOP_INTERRUPT + USCI_B_I2C_NAK_INTERRUPT);
+    USCI_B_I2C_clearInterrupt(USCI_B0_BASE, USCI_B_I2C_RECEIVE_INTERRUPT + USCI_B_I2C_START_INTERRUPT +
+                              USCI_B_I2C_STOP_INTERRUPT + USCI_B_I2C_NAK_INTERRUPT + USCI_B_I2C_ARBITRATIONLOST_INTERRUPT);
 
     USCI_B_I2C_enable(USCI_B0_BASE);
-    USCI_B_I2C_enableInterrupt(USCI_B0_BASE, USCI_B_I2C_RECEIVE_INTERRUPT + USCI_B_I2C_STOP_INTERRUPT + USCI_B_I2C_NAK_INTERRUPT);
+    USCI_B_I2C_enableInterrupt(USCI_B0_BASE, USCI_B_I2C_RECEIVE_INTERRUPT + USCI_B_I2C_START_INTERRUPT +
+                               USCI_B_I2C_STOP_INTERRUPT + USCI_B_I2C_NAK_INTERRUPT + USCI_B_I2C_ARBITRATIONLOST_INTERRUPT);
 }
 
 void i2c_receiveValues(uint8_t receiveLength)
@@ -88,13 +89,22 @@ void i2c_transmitValues(uint8_t data[32], uint8_t transmitLength)
         i2cData[i] = data[i];
         i++;
     }
+    i2cData[transmitLength] = 0; // nullterm string
+
     ptrI2cData = i2cData;
     i2cCounter = transmitLength;
     i2cDataLen = transmitLength;
     setTransmitMode();
     if(i2c_isMaster)
     {
-        USCI_B_I2C_masterSendMultiByteStart(USCI_B0_BASE, *ptrI2cData++);
+        if(transmitLength == 1)
+        {
+            USCI_B_I2C_masterSendSingleByte(USCI_B0_BASE, *ptrI2cData);
+        }
+        else
+        {
+            USCI_B_I2C_masterSendMultiByteStart(USCI_B0_BASE, *ptrI2cData++);
+        }
     }
 }
 
@@ -149,7 +159,7 @@ __interrupt void usci_b0_isr(void)
                     USCI_B_I2C_masterReceiveMultiByteStop(USCI_B0_BASE);
                 }
 
-                if (i2cCounter == 0) // finish read
+                if (i2cCounter == 0 || i2cDataLen == 1) // finish read
                 {
                     __bic_SR_register_on_exit(LPM0_bits);
                 }
@@ -171,31 +181,31 @@ __interrupt void usci_b0_isr(void)
         {
         case USCI_NONE: break;
         case USCI_I2C_UCALIFG: break;
-        case USCI_I2C_UCSTTIFG: break;
+        case USCI_I2C_UCSTTIFG:
+        {
+            ptrI2cData = i2cData;
+            __no_operation();
+//            *ptrI2cData++ = USCI_B_I2C_slaveGetData(USCI_B0_BASE);
+        }
+            break;
 
         case USCI_I2C_UCTXIFG: // ****** Slave Transmit ******
-            if (i2cCounter)
-            {
                 USCI_B_I2C_slavePutData(USCI_B0_BASE, *ptrI2cData++);
-                i2cCounter--;
-            }
             break;
 
         case USCI_I2C_UCRXIFG: // ****** Slave Receive ******
-            if (i2cCounter)
-            {
                 *ptrI2cData++ = USCI_B_I2C_slaveGetData(USCI_B0_BASE);
-                i2cCounter--;
-            }
             break;
         case USCI_I2C_UCNACKIFG: // Slave NACK
-            __bic_SR_register_on_exit(LPM0_bits);
+            __no_operation();
+            //__bic_SR_register_on_exit(LPM0_bits);
             break;
         case USCI_I2C_UCSTPIFG: // Slave Stop
-            __bic_SR_register_on_exit(LPM0_bits);
+            __no_operation();
+            //__bic_SR_register_on_exit(LPM0_bits);
             break;
         }
     }
 }
-
+*/
 
