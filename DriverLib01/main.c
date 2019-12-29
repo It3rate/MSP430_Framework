@@ -15,8 +15,8 @@ void initTimers(void);
 #define DATA1LENGTH 8
 //uint8_t transmitData0[DATA0LENGTH] = {0x52, 0x6f, 0x62, 0x69, 0x6e, 0x41, 0x42, 0x43, 0x5A};
 //uint8_t transmitData1[DATA1LENGTH] = {0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x59};
-uint8_t transmitData0[DATA0LENGTH] = {0x75, 0x6f, 0x62, 0x69, 0x6e, 0x41, 0x42, 0x43, 0x5A};
-uint8_t transmitData1[DATA1LENGTH] = {0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A, 0x59};
+uint8_t WHOAMI[1] = {0x75};
+uint8_t SENSORS[1] = {0x3B};
 uint8_t *transmitData;
 uint8_t dataLength = 0;
 uint8_t sendIndex = 0;
@@ -44,11 +44,11 @@ int main(void)
         {
         case 0:
             //i2c_masterTransmitByte(transmitData0[0]);
-            i2c_masterTransmitMultibyte(&transmitData0[0], 1);
+            i2c_masterTransmitMultibyte(&SENSORS[0], 1);
             //printf("out: %s\n", i2cDataOut);
             break;
         case 1:
-            i2c_masterReceiveMultibyte(1);
+            i2c_masterReceiveMultibyte(14);
             //printf("in: %s\n", i2cDataIn);
             break;
 //        case 2:
@@ -65,9 +65,12 @@ int main(void)
         if(sendIndex > 1)
         {
             sendIndex = 0;
-        }
 
-        printf("out: %s     in: %s\n", i2cDataOut, i2cDataIn);
+            printf("accel x%04X y%04X z%04X  temp: %04X  gyro: x%04X y%04X z%04X  \n",
+               (i2cDataIn[0]<<8)+i2cDataIn[1], (i2cDataIn[2]<<8)+i2cDataIn[3],  (i2cDataIn[4]<<8)+i2cDataIn[5],
+               (i2cDataIn[6]<<8)+i2cDataIn[7],
+               (i2cDataIn[8]<<8)+i2cDataIn[9], (i2cDataIn[10]<<8)+i2cDataIn[11],  (i2cDataIn[12]<<8)+i2cDataIn[13]);
+        }
         Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
         __bis_SR_register(LPM0_bits + GIE);
     }
