@@ -86,19 +86,44 @@ __interrupt void usci_b0_isr(void)
         break;
 
     case USCI_I2C_UCRXIFG:  // ****** Master Receive ******
-        *i2c.data++ = USCI_B_I2C_masterReceiveMultiByteNext(USCI_B0_BASE);
         i2c.counter--;
-        if (i2c.counter == 1 || i2c.totalLength == 1) // send stop if the second last element
+        if(i2c.totalLength == 1)
         {
-            USCI_B_I2C_masterReceiveMultiByteStop(USCI_B0_BASE);
+            GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
+            *i2c.data = USCI_B_I2C_masterReceiveSingle(USCI_B0_BASE);
+            __bic_SR_register_on_exit(LPM0_bits + GIE);
         }
-
-        if (i2c.counter == 0 || i2c.totalLength == 1) // finish read
+        else if(i2c.counter)
+        {
+            if (i2c.counter == 1)
+            {
+                *i2c.data++ = USCI_B_I2C_masterReceiveMultiByteFinish(USCI_B0_BASE);
+            }
+            else
+            {
+                *i2c.data++ = USCI_B_I2C_masterReceiveMultiByteNext(USCI_B0_BASE);
+            }
+        }
+        else
         {
             USCI_B_I2C_clearInterrupt(USCI_B0_BASE, RECEIVE_INTERRUPTS);
             GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
+            *i2c.data = USCI_B_I2C_masterReceiveMultiByteNext(USCI_B0_BASE);
             __bic_SR_register_on_exit(LPM0_bits);
         }
+
+//        *i2c.data++ = USCI_B_I2C_masterReceiveMultiByteNext(USCI_B0_BASE);
+//        if (i2c.counter == 1 || i2c.totalLength == 1) // send stop if the second last element
+//        {
+//            //GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
+//            USCI_B_I2C_masterReceiveMultiByteStop(USCI_B0_BASE);
+//        }
+//
+//        if (i2c.counter == 0 || i2c.totalLength == 1) // finish read
+//        {
+//            USCI_B_I2C_clearInterrupt(USCI_B0_BASE, RECEIVE_INTERRUPTS);
+//            __bic_SR_register_on_exit(LPM0_bits);
+//        }
 
         break;
     }

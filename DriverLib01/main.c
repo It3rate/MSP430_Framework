@@ -43,7 +43,7 @@ int main(void)
             i2c_masterTransmitMultibyte(&SENSORS[0], 1);
             break;
         case 1:
-            i2c_masterReceiveMultibyte(i2cDataIn, 15);
+            i2c_masterReceiveMultibyte(i2cDataIn, 16);
             break;
         }
         __bis_SR_register(LPM0_bits + GIE);
