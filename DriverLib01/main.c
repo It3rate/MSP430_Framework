@@ -7,6 +7,7 @@
 #include "i2c.h"
 #include "i2cMaster.h"
 #include "i2cSlave.h"
+#include "ssd1306.h"
 
 void initGPIO(void);
 void initTimers(void);
@@ -28,22 +29,38 @@ int main(void)
     initClocks(1);
     printClockSpeeds();
     enableGPIOInterrupts();
-
-#ifdef I2C_IS_MASTER
     initTimers();
-    //i2c_initMaster(0x48);
-    //i2c_initMaster(0x34);
-    i2c_initMaster(0x68);
+
+    ssd1306_init();
+    Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
+    __bis_SR_register(LPM0_bits + GIE);
+    ssd1306_clearDisplay();
+    Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
+    __bis_SR_register(LPM0_bits + GIE);
+
+    //ssd1306_printUI32(0,2,1234, HCENTERUL_ON);
+
+    ssd1306_printText(0,0, "012345678901234567890");
+    ssd1306_printText(0,1, "1 I Like to Count!");
+    ssd1306_printText(0,2, "2 I Like to Count!");
+    ssd1306_printText(0,3, "3 I Like to Count!");
+//    ssd1306_printText(0,4, "4 I Like to Count!");
+//    ssd1306_printText(0,5, "5 I Like to Count!");
+//    ssd1306_printText(0,6, "6 I Like to Count!");
+//    ssd1306_printText(0,7, "7 I Like to Count!");
+
+#ifdef I2C_IS_MASTERx
+    i2c_init(0x68);
 
     while (1)
     {
         switch(sendIndex)
         {
         case 0:
-            i2c_masterTransmitMultibyte(&SENSORS[0], 1);
+            i2c_write(&SENSORS[0], 1);
             break;
         case 1:
-            i2c_masterReceiveMultibyte(i2cDataIn, 16);
+            i2c_read(i2cDataIn, 16);
             break;
         }
         __bis_SR_register(LPM0_bits + GIE);
@@ -61,14 +78,10 @@ int main(void)
         Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
         __bis_SR_register(LPM0_bits + GIE);
     }
-#else
-    i2c_initSlave(0x48);
-    while(1)
-    {
-        __bis_SR_register(LPM0_bits + GIE);
-    }
 #endif
 
+__no_operation();
+while(1){}
 
 }
 

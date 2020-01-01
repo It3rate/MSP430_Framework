@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "i2cMaster.h"
 
-void i2c_initMaster(uint16_t slaveAddress)
+void i2c_init(uint16_t slaveAddress)
 {
     i2c.slaveAddress = slaveAddress;
 
@@ -21,7 +21,7 @@ void i2c_initMaster(uint16_t slaveAddress)
 
 // ***** RECEIVE *****
 #define RECEIVE_INTERRUPTS (USCI_B_I2C_RECEIVE_INTERRUPT + USCI_B_I2C_START_INTERRUPT + USCI_B_I2C_STOP_INTERRUPT + USCI_B_I2C_NAK_INTERRUPT)
-void i2c_masterReceiveMultibyte(uint8_t data[32], uint8_t receiveLength)
+void i2c_read(uint8_t data[32], uint8_t receiveLength)
 {
     i2c.data = data;
     i2c.counter = receiveLength;
@@ -39,7 +39,7 @@ void i2c_masterReceiveMultibyte(uint8_t data[32], uint8_t receiveLength)
 // ***** TRANSMIT *****
 #define TRANSMIT_INTERRUPTS (USCI_B_I2C_TRANSMIT_INTERRUPT + USCI_B_I2C_START_INTERRUPT + USCI_B_I2C_STOP_INTERRUPT + USCI_B_I2C_NAK_INTERRUPT)
 
-void i2c_masterTransmitMultibyte(uint8_t data[32], uint8_t transmitLength)
+void i2c_write(uint8_t data[32], uint8_t transmitLength)
 {
     i2c.data = data;
     i2c.counter = transmitLength;
