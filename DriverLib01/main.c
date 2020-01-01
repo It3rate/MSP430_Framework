@@ -33,31 +33,11 @@ int main(void)
 
 
 #ifdef I2C_IS_MASTER
-    //                  "0123456789012345678901";
-    char accelText[] = {"A: x     y     z    "};
-    char tempText[]  = {"T: x     "};
-    char gyroText[]  = {"G: x     y     z    "};
     while (1)
     {
             uint8_t *data = mpu9250_readSensors();
-            ssd1306_addHex((data[0]<<8)+data[1], &accelText[4]);
-            ssd1306_addHex((data[2]<<8)+data[3], &accelText[10]);
-            ssd1306_addHex((data[4]<<8)+data[5], &accelText[16]);
-            ssd1306_printText(0,0, accelText);
+            printGyroData(data);
 
-            ssd1306_addHex((data[8]<<8)+data[9], &gyroText[4]);
-            ssd1306_addHex((data[10]<<8)+data[11], &gyroText[10]);
-            ssd1306_addHex((data[12]<<8)+data[13], &gyroText[16]);
-            ssd1306_printText(0,1, gyroText);
-
-            ssd1306_addHex((data[6]<<8)+data[7], &tempText[4]);
-            ssd1306_printText(0,3, tempText);
-
-
-//            ssd1306_printUI32(0,0,(data[0]<<8)+data[1], HCENTERUL_OFF);
-//            ssd1306_printUI32(0,1,(data[2]<<8)+data[3], HCENTERUL_OFF);
-//            ssd1306_printUI32(0,2,(data[4]<<8)+data[5], HCENTERUL_OFF);
-//            ssd1306_printUI32(0,3,(data[8]<<8)+data[9], HCENTERUL_OFF);
 //            printf("accel x%04X y%04X z%04X  temp: %04X  gyro: x%04X y%04X z%04X  \n",
 //               (data[0]<<8)+data[1], (data[2]<<8)+data[3],  (data[4]<<8)+data[5],
 //               (data[6]<<8)+data[7],
@@ -81,7 +61,7 @@ void initGPIO(void)
 void initTimers(void)
 {
 //    setTargetTimerAndMode(TIMER_A0_BASE, TIMER_A_CONTINUOUS_MODE, 0.0f);
-    setTargetTimerAndMode(TIMER_A0_BASE, TIMER_A_UP_MODE, 0.1f);
+    setTargetTimerAndMode(TIMER_A0_BASE, TIMER_A_UP_MODE, 0.01f);
     Timer_A_stop(TIMER_A0_BASE);
     addCompare(1, 0.6f);
     addCompare(2, 0.9f);
