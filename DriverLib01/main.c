@@ -8,18 +8,10 @@
 #include "i2cMaster.h"
 #include "i2cSlave.h"
 #include "ssd1306.h"
+#include "mpu9250.h"
 
 void initGPIO(void);
 void initTimers(void);
-
-#define DATA0LENGTH 9
-#define DATA1LENGTH 8
-uint8_t WHOAMI[1] = {0x75};
-uint8_t SENSORS[1] = {0x3B};
-uint8_t dataLength = 0;
-uint8_t sendIndex = 0;
-
-bool i2c_isTransmitMode = true;
 
 int main(void)
 {
@@ -31,58 +23,52 @@ int main(void)
     enableGPIOInterrupts();
     initTimers();
 
+    i2c_init();
     ssd1306_init();
-    Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
-    __bis_SR_register(LPM0_bits + GIE);
+    mpu9250_init();
+
     ssd1306_clearDisplay();
-    Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
-    __bis_SR_register(LPM0_bits + GIE);
 
-    //ssd1306_printUI32(0,2,1234, HCENTERUL_ON);
+//    ssd1306_printText(0,3, "012345678901234567890");
 
-    ssd1306_printText(0,0, "012345678901234567890");
-    ssd1306_printText(0,1, "1 I Like to Count!");
-    ssd1306_printText(0,2, "2 I Like to Count!");
-    ssd1306_printText(0,3, "3 I Like to Count!");
-//    ssd1306_printText(0,4, "4 I Like to Count!");
-//    ssd1306_printText(0,5, "5 I Like to Count!");
-//    ssd1306_printText(0,6, "6 I Like to Count!");
-//    ssd1306_printText(0,7, "7 I Like to Count!");
 
-#ifdef I2C_IS_MASTERx
-    i2c_init(0x68);
-
+#ifdef I2C_IS_MASTER
+    //                  "0123456789012345678901";
+    char accelText[] = {"A: x     y     z    "};
+    char tempText[]  = {"T: x     "};
+    char gyroText[]  = {"G: x     y     z    "};
     while (1)
     {
-        switch(sendIndex)
-        {
-        case 0:
-            i2c_write(&SENSORS[0], 1);
-            break;
-        case 1:
-            i2c_read(i2cDataIn, 16);
-            break;
-        }
-        __bis_SR_register(LPM0_bits + GIE);
+            uint8_t *data = mpu9250_readSensors();
+            ssd1306_addHex((data[0]<<8)+data[1], &accelText[4]);
+            ssd1306_addHex((data[2]<<8)+data[3], &accelText[10]);
+            ssd1306_addHex((data[4]<<8)+data[5], &accelText[16]);
+            ssd1306_printText(0,0, accelText);
 
-        sendIndex++;
-        if(sendIndex > 1)
-        {
-            sendIndex = 0;
-            uint8_t *data = i2cDataIn;
-            printf("accel x%04X y%04X z%04X  temp: %04X  gyro: x%04X y%04X z%04X  \n",
-               (data[0]<<8)+data[1], (data[2]<<8)+data[3],  (data[4]<<8)+data[5],
-               (data[6]<<8)+data[7],
-               (data[8]<<8)+data[9], (data[10]<<8)+data[11],  (data[12]<<8)+data[13]);
-        }
+            ssd1306_addHex((data[8]<<8)+data[9], &gyroText[4]);
+            ssd1306_addHex((data[10]<<8)+data[11], &gyroText[10]);
+            ssd1306_addHex((data[12]<<8)+data[13], &gyroText[16]);
+            ssd1306_printText(0,1, gyroText);
+
+            ssd1306_addHex((data[6]<<8)+data[7], &tempText[4]);
+            ssd1306_printText(0,3, tempText);
+
+
+//            ssd1306_printUI32(0,0,(data[0]<<8)+data[1], HCENTERUL_OFF);
+//            ssd1306_printUI32(0,1,(data[2]<<8)+data[3], HCENTERUL_OFF);
+//            ssd1306_printUI32(0,2,(data[4]<<8)+data[5], HCENTERUL_OFF);
+//            ssd1306_printUI32(0,3,(data[8]<<8)+data[9], HCENTERUL_OFF);
+//            printf("accel x%04X y%04X z%04X  temp: %04X  gyro: x%04X y%04X z%04X  \n",
+//               (data[0]<<8)+data[1], (data[2]<<8)+data[3],  (data[4]<<8)+data[5],
+//               (data[6]<<8)+data[7],
+//               (data[8]<<8)+data[9], (data[10]<<8)+data[11],  (data[12]<<8)+data[13]);
+
         Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
         __bis_SR_register(LPM0_bits + GIE);
     }
 #endif
 
 __no_operation();
-while(1){}
-
 }
 
 void initGPIO(void)

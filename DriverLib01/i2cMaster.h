@@ -7,10 +7,10 @@
 
 
 
-void i2c_init(uint16_t slaveAddress);
+void i2c_init();
 
-void i2c_write(uint8_t data[32], uint8_t transmitLength);
-void i2c_read(uint8_t data[32], uint8_t receiveLength);
+void i2c_write(i2cInstance target, uint8_t data[32], uint8_t transmitLength);
+void i2c_read(i2cInstance target, uint8_t data[32], uint8_t receiveLength);
 
 #endif // I2C_IS_MASTER
 

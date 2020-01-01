@@ -1,29 +1,19 @@
 #include "mpu9250.h"
 #include "i2c.h"
 
-void initMpu9250(void)
+uint8_t WHOAMI[1] = {0x75};
+uint8_t SENSORS[1] = {0x3B};
+uint8_t sendIndex = 0;
+
+void mpu9250_init(void)
 {
 }
 
-void start()
+uint8_t* mpu9250_readSensors()
 {
-//    while (1)
-//    {
-//        __delay_cycles(1000);
-//        evaluateI2c();
-//        if(i2c_isTransmitMode)
-//        {
-//            i2c_transmitValues(transmitData, dataLength);
-//        }
-//        else
-//        {
-//            i2c_receiveValues(dataLength);
-//        }
-//        __bis_SR_register(LPM0_bits + GIE);
-//
-//        if(i2c_isMaster && !i2c_isTransmitMode)
-//        {
-//            //printf("data: %s\n", (i2cData+1));
-//        }
-//    }
+    i2c_write(i2c_gyro, &SENSORS[0], 1);
+    __bis_SR_register(LPM0_bits + GIE);
+    i2c_read(i2c_gyro, gyroData, 16);
+    __bis_SR_register(LPM0_bits + GIE);
+    return gyroData;
 }

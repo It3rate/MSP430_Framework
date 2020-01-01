@@ -10,12 +10,10 @@ typedef struct {
     uint8_t *data;
     uint8_t counter;
     uint8_t totalLength;
-} i2c_info;
+} i2cInstance;
 
-static i2c_info i2c = {};
 
-#define I2C_BUFFER_LENGTH 32
-uint8_t i2cDataIn[I2C_BUFFER_LENGTH];
+
 
 //uint16_t _slaveAddress;
 

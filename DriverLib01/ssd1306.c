@@ -22,8 +22,11 @@ const unsigned char HcenterUL[] = {                                           //
                                25                                       // 10 digits and 3 separators
 };
 
+static i2cInstance i2c_oled = {
+    .slaveAddress = 0x3C
+};
+
 void ssd1306_init(void) {
-    i2c_init(0x3C);
     // SSD1306 init sequence
     ssd1306_command(SSD1306_DISPLAYOFF);                                // 0xAE
     ssd1306_command(SSD1306_SETDISPLAYCLOCKDIV);                        // 0xD5
@@ -62,7 +65,7 @@ void ssd1306_init(void) {
 void ssd1306_command(unsigned char command) {
     buffer[0] = 0x80;
     buffer[1] = command;
-    i2c_write(buffer, 2);
+    i2c_write(i2c_oled, buffer, 2);
     __bis_SR_register(LPM0_bits + GIE);
 }
 
@@ -82,7 +85,7 @@ void ssd1306_clearDisplay(void) {
                 }
             }
 
-            i2c_write(buffer, 9);
+            i2c_write(i2c_oled, buffer, 9);
         }
     }
 }
@@ -124,7 +127,7 @@ void ssd1306_printText(uint8_t x, uint8_t y, char *ptString) {
 
         buffer[6] = 0x0;
 
-        i2c_write(buffer, 7);
+        i2c_write(i2c_oled, buffer, 7);
         ptString++;
         x+=6;
     }
@@ -159,6 +162,18 @@ void ssd1306_printTextBlock(uint8_t x, uint8_t y, char *ptString) {
         ptString++;
     }
 
+}
+static char *hexDigits = "0123456789ABCDEF";
+char *ssd1306_addHex(uint16_t num, char *outbuf)
+{
+    uint8_t i;
+    uint8_t index;
+    for(i = 0; i < 4; i++)
+    {
+        *outbuf++ = hexDigits[(num & 0xF000) >> 12];
+        num <<= 4;
+    }
+    return outbuf;
 }
 
 

@@ -89,6 +89,8 @@ void ssd1306_printText(uint8_t, uint8_t, char *);
 void ssd1306_printTextBlock(uint8_t, uint8_t, char *);
 void ssd1306_printUI32(uint8_t, uint8_t, uint32_t, uint8_t);
 
+char *ssd1306_addHex(uint16_t num, char *outbuf);
+
 uint8_t digits(uint32_t);
 void ultoa(uint32_t, char *);
 void reverse(char *);

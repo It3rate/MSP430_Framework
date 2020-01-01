@@ -4,10 +4,10 @@
 #include <stdio.h>
 #include "i2cMaster.h"
 
-void i2c_init(uint16_t slaveAddress)
-{
-    i2c.slaveAddress = slaveAddress;
+static i2cInstance currentTarget;
 
+void i2c_init()
+{
     // F5529 3.0 data and 3.1 clk for USCI_B
     GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P3, GPIO_PIN0 + GPIO_PIN1);
 
@@ -16,18 +16,19 @@ void i2c_init(uint16_t slaveAddress)
     param.i2cClk = UCS_getSMCLK();
     param.dataRate = USCI_B_I2C_SET_DATA_RATE_400KBPS;
     USCI_B_I2C_initMaster(USCI_B0_BASE, &param);
-    USCI_B_I2C_setSlaveAddress(USCI_B0_BASE, i2c.slaveAddress);
 }
 
 // ***** RECEIVE *****
 #define RECEIVE_INTERRUPTS (USCI_B_I2C_RECEIVE_INTERRUPT + USCI_B_I2C_START_INTERRUPT + USCI_B_I2C_STOP_INTERRUPT + USCI_B_I2C_NAK_INTERRUPT)
-void i2c_read(uint8_t data[32], uint8_t receiveLength)
+void i2c_read(i2cInstance target, uint8_t data[32], uint8_t receiveLength)
 {
-    i2c.data = data;
-    i2c.counter = receiveLength;
-    i2c.totalLength = receiveLength;
+    currentTarget = target;
+    currentTarget.data = data;
+    currentTarget.counter = receiveLength;
+    currentTarget.totalLength = receiveLength;
 
     USCI_B_I2C_disable(USCI_B0_BASE);
+    USCI_B_I2C_setSlaveAddress(USCI_B0_BASE, currentTarget.slaveAddress);
     USCI_B_I2C_setMode(USCI_B0_BASE, USCI_B_I2C_RECEIVE_MODE);
     USCI_B_I2C_clearInterrupt(USCI_B0_BASE, RECEIVE_INTERRUPTS);
     USCI_B_I2C_enable(USCI_B0_BASE);
@@ -39,21 +40,23 @@ void i2c_read(uint8_t data[32], uint8_t receiveLength)
 // ***** TRANSMIT *****
 #define TRANSMIT_INTERRUPTS (USCI_B_I2C_TRANSMIT_INTERRUPT + USCI_B_I2C_START_INTERRUPT + USCI_B_I2C_STOP_INTERRUPT + USCI_B_I2C_NAK_INTERRUPT)
 
-void i2c_write(uint8_t data[32], uint8_t transmitLength)
+void i2c_write(i2cInstance target, uint8_t data[32], uint8_t transmitLength)
 {
-    i2c.data = data;
-    i2c.counter = transmitLength;
-    i2c.totalLength = transmitLength;
+    currentTarget = target;
+    currentTarget.data = data;
+    currentTarget.counter = transmitLength;
+    currentTarget.totalLength = transmitLength;
 
     while (USCI_B_I2C_isBusBusy(USCI_B0_BASE));
     USCI_B_I2C_disable(USCI_B0_BASE);
+    USCI_B_I2C_setSlaveAddress(USCI_B0_BASE, currentTarget.slaveAddress);
     USCI_B_I2C_setMode(USCI_B0_BASE, USCI_B_I2C_TRANSMIT_MODE);
     USCI_B_I2C_clearInterrupt(USCI_B0_BASE, TRANSMIT_INTERRUPTS);
     USCI_B_I2C_enable(USCI_B0_BASE);
     USCI_B_I2C_enableInterrupt(USCI_B0_BASE, TRANSMIT_INTERRUPTS);
 
     //printf("%c", *ptrI2cData);
-    USCI_B_I2C_masterSendMultiByteStart(USCI_B0_BASE, *i2c.data++);
+    USCI_B_I2C_masterSendMultiByteStart(USCI_B0_BASE, *currentTarget.data++);
 }
 
 #pragma vector=USCI_B0_VECTOR
@@ -71,10 +74,10 @@ __interrupt void usci_b0_isr(void)
         break;
 
     case USCI_I2C_UCTXIFG: // ****** Master Transmit ******
-        i2c.counter--;
-        if (i2c.counter)
+        currentTarget.counter--;
+        if (currentTarget.counter)
         {
-            USCI_B_I2C_masterSendMultiByteNext(USCI_B0_BASE, *i2c.data++);
+            USCI_B_I2C_masterSendMultiByteNext(USCI_B0_BASE, *currentTarget.data++);
         }
         else // end transmission
         {
@@ -86,29 +89,29 @@ __interrupt void usci_b0_isr(void)
         break;
 
     case USCI_I2C_UCRXIFG:  // ****** Master Receive ******
-        i2c.counter--;
-        if(i2c.totalLength == 1)
+        currentTarget.counter--;
+        if(currentTarget.totalLength == 1)
         {
             GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
-            *i2c.data = USCI_B_I2C_masterReceiveSingle(USCI_B0_BASE);
+            *currentTarget.data = USCI_B_I2C_masterReceiveSingle(USCI_B0_BASE);
             __bic_SR_register_on_exit(LPM0_bits + GIE);
         }
-        else if(i2c.counter)
+        else if(currentTarget.counter)
         {
-            if (i2c.counter == 1)
+            if (currentTarget.counter == 1)
             {
-                *i2c.data++ = USCI_B_I2C_masterReceiveMultiByteFinish(USCI_B0_BASE);
+                *currentTarget.data++ = USCI_B_I2C_masterReceiveMultiByteFinish(USCI_B0_BASE);
             }
             else
             {
-                *i2c.data++ = USCI_B_I2C_masterReceiveMultiByteNext(USCI_B0_BASE);
+                *currentTarget.data++ = USCI_B_I2C_masterReceiveMultiByteNext(USCI_B0_BASE);
             }
         }
         else
         {
             USCI_B_I2C_clearInterrupt(USCI_B0_BASE, RECEIVE_INTERRUPTS);
             GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
-            *i2c.data = USCI_B_I2C_masterReceiveMultiByteNext(USCI_B0_BASE);
+            *currentTarget.data = USCI_B_I2C_masterReceiveMultiByteNext(USCI_B0_BASE);
             __bic_SR_register_on_exit(LPM0_bits);
         }
 
