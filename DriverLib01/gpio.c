@@ -17,6 +17,11 @@ void addGPIOOutput(uint8_t port, uint16_t pin, bool startOn)
     }
 }
 
+void addGPIOInput(uint8_t port, uint16_t pin)
+{
+    GPIO_setAsInputPin(port, pin);
+}
+
 void addGPIOInterrupt(uint8_t port, uint16_t pin, bool isLowToHigh)
 {
     GPIO_setAsInputPinWithPullUpResistor(port, pin);
