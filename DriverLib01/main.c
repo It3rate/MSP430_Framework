@@ -12,17 +12,20 @@
 
 void initGPIO(void);
 void initTimers(void);
-uint16_t timerCounter = 0;
+uint16_t volatile timerCounter = 0;
 uint8_t ccrRed = 1;
 uint8_t ccrGreen = 2;
 uint8_t ccrBlue = 3;
+
+static enum States {s_init, s_read, s_print, s_calc, s_delay, s_idle};
+uint8_t *data;
 
 int main(void)
 {
     WDT_A_hold(WDT_A_BASE);
 
     initGPIO();
-    initClocks(1);
+    initClocks(2);
     printClockSpeeds();
     enableGPIOInterrupts();
     initTimers();
@@ -33,21 +36,78 @@ int main(void)
 
     ssd1306_clearDisplay();
 
+    enum States curState = s_init;
+    enum States nextState = s_read;
+    uint16_t ax;
+    uint16_t ay;
+    uint16_t az;
+
     while (1)
     {
-        Timer_A_stop(TIMER_A0_BASE);
-        uint8_t *data = mpu9250_readSensors();
-        printGyroData(data);
+        switch (curState)
+        {
+        case s_init:
+        {
+            Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
+            curState = s_read;
+        }
+            break;
+        case s_read:
+        {
+            data = mpu9250_readSensors();
+            curState = s_print;
+        }
+            break;
+        case s_print:
+        {
+            printGyroData(data);
+            curState = s_calc;
+        }
+            break;
+        case s_calc:
+        {
+            ax = (data[0]<<8)+data[1];
+            ay = (data[2]<<8)+data[3];
+            az = (data[4]<<8)+data[5];
+            setCompareValue(ccrRed, ax / 65535.0f);
+            setCompareValue(ccrGreen, ay / 65535.0f);
+            setCompareValue(ccrBlue,  az / 65535.0f);
+            curState = s_delay;
+        }
+            break;
+        case s_delay:
+        {
+            timerCounter = 200;
+            nextState = s_read;
+            curState = s_idle;
+        }
+            break;
+        case s_idle:
+        {
+            __bis_SR_register(LPM0_bits + GIE);
+            curState = nextState;
+        }
+            break;
+        default:
+            __never_executed();
+        }
+//        if(timerCounter == 0)
+//        {
+//            uint8_t *data = mpu9250_readSensors();
+//            //Timer_A_stop(TIMER_A0_BASE);
+//            printGyroData(data);
+//            //Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
+//
+//            uint16_t ax = (data[0]<<8)+data[1];
+//            uint16_t ay = (data[2]<<8)+data[3];
+//            uint16_t az = (data[4]<<8)+data[5];
+//            setCompareValue(ccrRed, ax / 65535.0f);
+//            setCompareValue(ccrGreen, ay / 65535.0f);
+//            setCompareValue(ccrBlue,  az / 65535.0f);
+//            timerCounter = 200;
+//        }
 
-        uint16_t ax = (data[0]<<8)+data[1];
-        uint16_t ay = (data[2]<<8)+data[3];
-        uint16_t az = (data[4]<<8)+data[5];
-        setCompareValue(ccrRed, ax / 65535.0f);
-        setCompareValue(ccrGreen, ay / 65535.0f);
-        setCompareValue(ccrBlue,  az / 65535.0f);
-        timerCounter = 200;
-        Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
-        __bis_SR_register(LPM0_bits + GIE);
+        //__bis_SR_register(LPM0_bits + GIE);
     }
 
 __no_operation();
@@ -70,21 +130,7 @@ interrupt void timerTA0_1(void)
         case 6: // CCR3 IFG
             GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN7);
             break;
-        case 8: // CCR4 IFG
-            GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN3);
-            GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN0);
-            GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN7);
-            if(timerCounter > 1)
-            {
-                timerCounter--;
-                if(timerCounter <= 1)
-                {
-                    GPIO_toggleOutputOnPin(GPIO_PORT_P4, GPIO_PIN7);
-                    //Timer_A_stop(TIMER_A0_BASE);
-                    __bic_SR_register_on_exit(LPM0_bits);
-                }
-            }
-            break;
+        case 8:  break; // CCR4 IFG
         case 10: break; // CCR5 IFG
         case 12: break; // CCR6 IFG
         case 14: break; // CCR7 IFG
@@ -96,7 +142,20 @@ interrupt void timerTA0_1(void)
 #pragma vector=TIMER0_A0_VECTOR
 interrupt void timerTA0_0(void)
 {
-    __no_operation();
+    GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN3);
+    GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN0);
+    GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN7);
+    if(timerCounter > 0)
+    {
+        timerCounter--;
+        if(timerCounter == 0)
+        {
+            GPIO_toggleOutputOnPin(GPIO_PORT_P8, GPIO_PIN2);
+            GPIO_toggleOutputOnPin(GPIO_PORT_P4, GPIO_PIN7);
+            //Timer_A_stop(TIMER_A0_BASE);
+            __bic_SR_register_on_exit(LPM0_bits);
+        }
+    }
 }
 
 #pragma vector=PORT1_VECTOR
@@ -117,18 +176,19 @@ void initGPIO(void)
     addGPIOOutput(GPIO_PORT_P4, GPIO_PIN3, false);
     addGPIOOutput(GPIO_PORT_P4, GPIO_PIN0, false);
     addGPIOOutput(GPIO_PORT_P3, GPIO_PIN7, false);
-//    addGPIOOutput(GPIO_PORT_P8, GPIO_PIN2, false);
+    addGPIOOutput(GPIO_PORT_P8, GPIO_PIN2, false);
 }
 
 void initTimers(void)
 {
 //    setTargetTimerAndMode(TIMER_A0_BASE, TIMER_A_CONTINUOUS_MODE, 0.0f);
-    setTargetTimerAndMode(TIMER_A0_BASE, TIMER_A_UP_MODE, 0.001f); // 0.02f == ~50Hz
+    setTargetTimerAndMode(TIMER_A0_BASE, TIMER_A_UP_MODE, 0.0005f); // 0.02f == ~50Hz
     Timer_A_stop(TIMER_A0_BASE);
+    //addCompare(0, 1.0f);
     addCompare(1, 0.6f);
     addCompare(2, 0.2f);
     addCompare(3, 0.9f);
-    addCompare(4, 0.99f);
+    //addCompare(4, 0.99f);
 }
 
 

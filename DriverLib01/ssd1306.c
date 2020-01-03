@@ -128,6 +128,7 @@ void ssd1306_printText(uint8_t x, uint8_t y, char *ptString) {
         buffer[6] = 0x0;
 
         i2c_write(i2c_oled, buffer, 7);
+        __bis_SR_register(LPM0_bits + GIE);
         ptString++;
         x+=6;
     }

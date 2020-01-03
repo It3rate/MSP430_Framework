@@ -17,6 +17,9 @@ void initClocks(uint8_t mclkMHz)
     case 1:
         setMClock_1MHz();
         break;
+    case 2:
+        setMClock_2MHz();
+        break;
     case 8:
         setMClock_8MHz();
         break;
@@ -61,6 +64,13 @@ void setMClock_8MHz(void)
     dividerForOneSecond = TIMER_A_CLOCKSOURCE_DIVIDER_8;
 }
 
+void setMClock_2MHz(void)
+{
+    PMM_setVCore(PMM_CORE_LEVEL_0);
+    UCS_initClockSignal(UCS_FLLREF, UCS_REFOCLK_SELECT, UCS_CLOCK_DIVIDER_1);
+    UCS_initFLLSettle(2000, 2000000/REFO_FREQ);
+    dividerForOneSecond = TIMER_A_CLOCKSOURCE_DIVIDER_2;
+}
 void setMClock_1MHz(void)
 {
     PMM_setVCore(PMM_CORE_LEVEL_0);
