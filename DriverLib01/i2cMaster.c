@@ -62,6 +62,7 @@ void i2c_write(i2cInstance target, uint8_t data[32], uint8_t transmitLength)
 #pragma vector=USCI_B0_VECTOR
 __interrupt void usci_b0_isr(void)
 {
+    //__disable_interrupt();
     uint8_t iv = (uint8_t) UCB0IV;
     switch (__even_in_range(iv, 12))
     {
@@ -130,6 +131,7 @@ __interrupt void usci_b0_isr(void)
 
         break;
     }
+    //__enable_interrupt();
 }
 
 #endif // I2C_IS_MASTER

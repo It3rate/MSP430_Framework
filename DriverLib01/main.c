@@ -18,6 +18,8 @@ uint8_t ccrGreen = 2;
 uint8_t ccrBlue = 3;
 
 static enum States {s_init, s_read, s_print, s_calc, s_delay, s_idle};
+enum States curState = s_init;
+enum States nextState = s_read;
 uint8_t *data;
 
 int main(void)
@@ -36,8 +38,6 @@ int main(void)
 
     ssd1306_clearDisplay();
 
-    enum States curState = s_init;
-    enum States nextState = s_read;
     uint16_t ax;
     uint16_t ay;
     uint16_t az;
@@ -60,7 +60,9 @@ int main(void)
             break;
         case s_print:
         {
+            Timer_A_stop(TIMER_A0_BASE);
             printGyroData(data);
+            Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
             curState = s_calc;
         }
             break;
@@ -91,23 +93,6 @@ int main(void)
         default:
             __never_executed();
         }
-//        if(timerCounter == 0)
-//        {
-//            uint8_t *data = mpu9250_readSensors();
-//            //Timer_A_stop(TIMER_A0_BASE);
-//            printGyroData(data);
-//            //Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
-//
-//            uint16_t ax = (data[0]<<8)+data[1];
-//            uint16_t ay = (data[2]<<8)+data[3];
-//            uint16_t az = (data[4]<<8)+data[5];
-//            setCompareValue(ccrRed, ax / 65535.0f);
-//            setCompareValue(ccrGreen, ay / 65535.0f);
-//            setCompareValue(ccrBlue,  az / 65535.0f);
-//            timerCounter = 200;
-//        }
-
-        //__bis_SR_register(LPM0_bits + GIE);
     }
 
 __no_operation();
@@ -145,7 +130,7 @@ interrupt void timerTA0_0(void)
     GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN3);
     GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN0);
     GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN7);
-    if(timerCounter > 0)
+    if(timerCounter > 0 && curState == s_idle)
     {
         timerCounter--;
         if(timerCounter == 0)
